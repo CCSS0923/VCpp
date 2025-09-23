@@ -3,6 +3,8 @@
 
 #include "framework.h"
 #include "20250923.h"
+#include <stdlib.h>
+#include <time.h>
 
 #define MAX_LOADSTRING 100
 
@@ -122,7 +124,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 
+// 나의 객체 정보
 RECT g_me;
+// 적 객체 정보
+RECT g_you;
+// 음식 객체 정보
+RECT g_food;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -135,6 +142,141 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_me.top = 10;
         g_me.right = 150;
         g_me.bottom = 150;
+        // 2. 상대 객체의 초기화 위치 설정
+        g_you.left = 300;
+        g_you.top = 300;
+        g_you.right = 400;
+        g_you.bottom = 400;
+        // 3. 주기적인 윈도우 메시지 호출요청 : 타이머 설정
+        // - 1초마다 ID가 1인 타이머가 지속적으로 호출
+        SetTimer(hWnd, 1, 1000, NULL);
+        // 4. 음식의 초기화 위치 설정
+        g_food.left = 250;
+        g_food.top = 250;
+        g_food.right = 300;
+        g_food.bottom = 300;
+        // 5. 랜덤 Seed 값 변경
+        srand(time(NULL));
+    }
+        break;
+
+    case WM_TIMER:
+    {
+        // 내가 전달한 타이머를 확인
+        if (1 == wParam)
+        {
+            if (g_me.left < g_you.left)
+            {
+                g_you.left -= 10;
+                g_you.right -= 10;
+            }
+            else
+            {
+                g_you.left += 10;
+                g_you.right += 10;
+            }
+            if (g_me.top < g_you.top)
+            {
+                g_you.top -= 10;
+                g_you.bottom -= 10;
+            }
+            else
+            {
+                g_you.top += 10;
+                g_you.bottom += 10;
+            }
+        }
+        // 좌표 이동이 끝난 상태
+        // 겹침을 확인
+        RECT ret;   // 겹침이 있을때, 겹친 영역 좌표 값을 반환
+
+        // 상대가 움직인 상태에서 나를 잡았는지 확인
+        if (IntersectRect(&ret, &g_me, &g_you))
+        {
+            KillTimer(hWnd, 1);
+            MessageBox(hWnd, L"잡혔다", L"피곤해", LB_OKAY);
+        }
+         
+        // WM_PAINT를 호출한다
+        InvalidateRect(hWnd, NULL, TRUE);
+    }
+        break;
+    case WM_KEYDOWN:
+    {
+        switch(wParam)
+        {
+            case VK_LEFT:
+            {
+                g_me.left -= 10;
+                g_me.right -= 10;
+                // 좌표 이동은 반드시 먼저 실행한다.
+                if (10 > g_me.left)
+                {
+                    g_me.left = 10;
+                    g_me.right = g_me.left + 140;
+                }
+            }
+                break;
+            case VK_RIGHT:
+            {
+                g_me.left += 10;
+                g_me.right += 10;
+
+                if (660 < g_me.left)
+                {
+                    g_me.left = 660;
+                    g_me.right = g_me.left + 140;
+                }
+            }
+                break;
+            case VK_UP:
+            {
+                g_me.top -= 10;
+                g_me.bottom -= 10;
+                
+                if (10 > g_me.top)
+                {
+                    g_me.top = 10;
+                    g_me.bottom = g_me.top + 140;
+                }
+            }
+                break;
+            case VK_DOWN:
+            {
+                g_me.top += 10;
+                g_me.bottom += 10;
+
+                if (600 < g_me.bottom)
+                {
+                    g_me.bottom = 600;
+                    g_me.top = g_me.bottom - 140;
+                }
+            }
+                break;
+        }
+        // 나의 객체 좌표 이동이 완료
+
+        // 내가 음식을 먹었는지 확인
+        RECT ret;
+
+        if (IntersectRect(&ret, &g_me, &g_food))
+        {
+            /*
+            // 음식을 사라지게 만든다.
+            g_food.left = -100;
+            g_food.top = -100;
+            g_food.right = -100;
+            g_food.bottom = -100;
+            */
+            // 음식을 랜덤한 위치에 좌표 계산
+            g_food.left = rand() % 600;
+            g_food.top = rand() % 600;
+            g_food.right = g_food.left + 50;
+            g_food.top = g_food.top + 50;
+        }
+        
+        // WM_PAINT를 호출한다.
+        InvalidateRect(hWnd, NULL, TRUE);
     }
         break;
     case WM_COMMAND:
@@ -158,7 +300,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+            
+            // 그라운드 출력
+            Rectangle(hdc, 10, 10, 800, 600);
+            // 나의 객체 출력
+            Rectangle(hdc, g_me.left, g_me.top, g_me.right, g_me.bottom);
+            // 상대 객체 출력
+            Ellipse(hdc, g_you.left, g_you.top, g_you.right, g_you.bottom);
+            // 음식 객체 출력
+            Ellipse(hdc, g_food.left, g_food.top, g_food.right, g_food.bottom);
+
             EndPaint(hWnd, &ps);
         }
         break;
